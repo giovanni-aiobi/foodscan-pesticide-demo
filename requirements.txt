@@ -1,0 +1,7 @@
+# Pesticide Compliance Checker - Streamlit Demo
+# Lightweight dependencies for deployment
+
+streamlit==1.50.0
+pandas==2.3.3
+supabase==2.14.0
+python-dotenv==1.0.1
