@@ -48,7 +48,7 @@ Write-Host ""
 Write-Host "4️⃣  Add Secrets in Streamlit Cloud:" -ForegroundColor White
 Write-Host "   Click 'Advanced settings' → 'Secrets'" -ForegroundColor Gray
 Write-Host "   Copy content from .streamlit/secrets.toml.example" -ForegroundColor Gray
-Write-Host ""
+Write-Host ""   
 
 Write-Host "✨ Your app will be live at:" -ForegroundColor Green
 Write-Host "   https://[your-custom-url].streamlit.app" -ForegroundColor Cyan
