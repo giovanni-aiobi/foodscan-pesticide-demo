@@ -39,7 +39,7 @@ class ComplianceResult:
     residue_level: Optional[float]
     eu_status: Optional[str]
     gap_recommendations: Optional[Dict]
-    alternatives: Optional[List[str]]
+    alternatives: Optional[List[dict]]
     references: List[str]
 
 
@@ -152,8 +152,8 @@ class PesticideChecker:
                         alternatives=None,
                         references=["COLEAD GAP Database"]
                     )
-            except:
-                pass
+            except (ValueError, TypeError):
+                pass  # Invalid date format, skip expiration check
         
         # Check residue level if provided
         if residue_level is not None and mrl_eu is not None:
@@ -289,10 +289,13 @@ class PesticideChecker:
     
     def _extract_gap(self, row: Dict) -> Dict:
         """Extract Good Agricultural Practice recommendations"""
+        # Use EU preharvest interval as default, fallback to Codex
+        preharvest = row.get('preharvest_eu') or row.get('preharvest_codex')
         return {
             "dose": row.get('dose'),
             "max_applications": row.get('max_applications'),
             "interval_days": row.get('interval_days'),
+            "preharvest_interval": preharvest,  # Key expected by demo_app
             "preharvest_interval_eu": row.get('preharvest_eu'),
             "preharvest_interval_codex": row.get('preharvest_codex'),
             "who_toxicity_class": row.get('who_class'),
@@ -300,20 +303,20 @@ class PesticideChecker:
             "resistance_group": row.get('resistance_group')
         }
     
-    def _find_alternatives(self, crop: str, pesticide_type: str) -> List[str]:
+    def _find_alternatives(self, crop: str, pesticide_type: str) -> List[dict]:
         """Find alternative approved pesticides for same crop and type"""
         if not pesticide_type:
             return []
         
         response = self.supabase.table('pesticide_mrl') \
-            .select('active_substance') \
+            .select('active_substance, mrl_eu, eu_status') \
             .ilike('crop', crop) \
             .ilike('pesticide_type', f'%{pesticide_type}%') \
             .eq('eu_status', 'Approuvée') \
             .limit(5) \
             .execute()
         
-        return [row['active_substance'] for row in response.data]
+        return response.data
     
     def _create_unknown_result(
         self, 
@@ -398,7 +401,7 @@ if __name__ == "__main__":
     print(f"Severity: {result.severity}")
     print(f"Message: {result.message}")
     if result.alternatives:
-        print(f"Alternatives: {', '.join(result.alternatives)}")
+        print(f"Alternatives: {', '.join(alt.get('active_substance', 'N/A') for alt in result.alternatives)}")
     
     print("\n" + "=" * 60)
     print("Test 2: Tomato + Azoxystrobin (Approved)")

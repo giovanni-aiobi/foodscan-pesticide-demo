@@ -44,6 +44,7 @@ col1, col2 = st.columns(2)
 with col1:
     crop = st.text_input(
         "🥕 Crop Name",
+        value=st.session_state.get("example_crop", ""),
         placeholder="e.g., mango, tomato, carrot",
         help="Enter the crop name (case-insensitive)"
     )
@@ -51,6 +52,7 @@ with col1:
 with col2:
     substance = st.text_input(
         "🧪 Active Substance",
+        value=st.session_state.get("example_substance", ""),
         placeholder="e.g., Azoxystrobin, Alpha-cypermethrin",
         help="Enter the pesticide active substance"
     )
@@ -59,7 +61,7 @@ residue_level = st.number_input(
     "📊 Residue Level (mg/kg) - Optional",
     min_value=0.0,
     max_value=100.0,
-    value=0.0,
+    value=st.session_state.get("example_residue", 0.0),
     step=0.01,
     help="Enter measured residue level to check against MRL"
 )
@@ -86,6 +88,7 @@ if st.button("🔍 Check Compliance", type="primary", use_container_width=True):
             status_colors = {
                 "COMPLIANT": "🟢",
                 "NON_COMPLIANT": "🔴",
+                "WARNING": "🟠",
                 "INFO": "🔵",
                 "UNKNOWN": "⚪"
             }
@@ -155,11 +158,19 @@ if st.button("🔍 Check Compliance", type="primary", use_container_width=True):
                 # Show alternatives in a table
                 alt_data = []
                 for alt in result.alternatives[:5]:  # Show top 5
-                    alt_data.append({
-                        "Substance": alt.get("active_substance", "N/A"),
-                        "MRL (mg/kg)": alt.get("mrl_eu", "N/A"),
-                        "Status": alt.get("eu_status", "N/A")
-                    })
+                    if isinstance(alt, dict):
+                        alt_data.append({
+                            "Substance": alt.get("active_substance", "N/A"),
+                            "MRL (mg/kg)": alt.get("mrl_eu", "N/A"),
+                            "Status": alt.get("eu_status", "N/A")
+                        })
+                    else:
+                        # Handle legacy string format
+                        alt_data.append({
+                            "Substance": str(alt),
+                            "MRL (mg/kg)": "N/A",
+                            "Status": "Approved"
+                        })
                 
                 if alt_data:
                     st.dataframe(pd.DataFrame(alt_data), use_container_width=True)
@@ -168,10 +179,17 @@ if st.button("🔍 Check Compliance", type="primary", use_container_width=True):
 st.markdown("---")
 st.subheader("💡 Try These Examples")
 
+def clear_examples():
+    """Clear example values from session state after they've been used"""
+    for key in ["example_crop", "example_substance", "example_residue"]:
+        if key in st.session_state:
+            del st.session_state[key]
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("✅ Compliant Example", use_container_width=True):
+        clear_examples()
         st.session_state.example_crop = "mango"
         st.session_state.example_substance = "Azoxystrobin"
         st.session_state.example_residue = 2.0
@@ -179,6 +197,7 @@ with col1:
 
 with col2:
     if st.button("❌ Non-Compliant Example", use_container_width=True):
+        clear_examples()
         st.session_state.example_crop = "mango"
         st.session_state.example_substance = "Alpha-cypermethrin"
         st.session_state.example_residue = 0.5
@@ -186,18 +205,11 @@ with col2:
 
 with col3:
     if st.button("⚠️ MRL Exceeded Example", use_container_width=True):
+        clear_examples()
         st.session_state.example_crop = "mango"
         st.session_state.example_substance = "Azoxystrobin"
         st.session_state.example_residue = 5.0
         st.rerun()
-
-# Load example if clicked
-if "example_crop" in st.session_state:
-    st.info(f"Example loaded: {st.session_state.example_crop} + {st.session_state.example_substance}")
-    # Clear after showing
-    del st.session_state.example_crop
-    del st.session_state.example_substance
-    del st.session_state.example_residue
 
 # Footer
 st.markdown("---")
